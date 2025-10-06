@@ -1,0 +1,43 @@
+#!/usr/bin/env fish
+
+set -g NOTES_FOLDER "$HOME/Documents/NOTES"
+set -g SCREENSHOT_DIRNAME 99-Screenshots
+
+function set_project_dir
+    set -U CURRENT_PROJECT_PATH (realpath $argv[1])
+end
+
+function vscode_open
+    code -n "$CURRENT_PROJECT_PATH" (realpath "$NOTES_FOLDER")
+end
+
+function setup_screenshot_dir
+    set path "$argv[1]/$SCREENSHOT_DIRNAME"
+    mkdir -p "$path"
+    set full_path (realpath "$path")
+    defaults write com.apple.screencapture location "$full_path"
+    dockutil --add "$full_path" --replacing "$SCREENSHOT_DIRNAME"
+end
+
+function cmd_setup
+    if test -n "$argv[1]"
+        set path "$argv[1]"
+    else
+        set path "$PWD"
+    end
+    set_project_dir "$path"
+    setup_screenshot_dir "$path"
+    vscode_open
+end
+
+switch $argv[1]
+    case setup
+        cmd_setup $argv[2]
+        exit $status
+    case open
+        vscode_open
+        exit $status
+    case shell
+        cd "$CURRENT_PROJECT_PATH"; 
+        and zsh -i
+end
