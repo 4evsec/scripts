@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+
+def parse_sourcemap_dict(data: dict):
+    try:
+        for source, contents in zip(
+            data.get("sources"),
+            data.get("sourcesContent"),
+        ):
+            yield "./" + source.replace("..", ""), contents
+    except KeyError as exc:
+        raise KeyError from exc
+
+
+def parse_sourcemap_file(file_path):
+    with open(file_path, "r", encoding="utf-8") as sourcemap_file:
+        try:
+            data = json.load(sourcemap_file)
+            return parse_sourcemap_dict(data)
+        except json.JSONDecodeError as exc:
+            raise ValueError from exc
+
+
+def extract_sources_from_directory(directory: Path, out_dir: Path):
+    for sourcemap_file in directory.rglob("*.map"):
+        for source_path, source_contents in parse_sourcemap_file(sourcemap_file):
+            local_path = out_dir / source_path
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+
+            print(local_path)
+
+            with open(local_path, "w", encoding="utf-8") as local_source_file:
+                local_source_file.write(source_contents)
+
+
+def main(input_directory, *args):
+    input_directory_path = Path(input_directory).resolve()
+
+    if not input_directory_path.is_dir():
+        raise SystemExit("Input path should be a directory.")
+
+    output_directory = Path.cwd() / str(
+        "sourcemap-extract-"
+        + str(input_directory_path.relative_to(Path.cwd())).replace("/", "_._")
+    )
+    extract_sources_from_directory(input_directory_path, output_directory)
+
+
+if __name__ == "__main__":
+    main(*sys.argv[1:])
